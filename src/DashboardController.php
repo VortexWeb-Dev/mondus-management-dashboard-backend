@@ -45,19 +45,19 @@ class DashboardController extends BitrixController
                 'CLOSED',
                 'OPPORTUNITY', // Property Price
                 'DATE_CREATE',
-                'UF_CRM_1691416031901', // Deal Type
-                'UF_CRM_1678454522560', // Developer Name (enum)
-                'UF_CRM_1691928298822', // Total Commission AED
-                'UF_CRM_1691928322686', // Agent's Commission AED
+                'UF_CRM_67FF84E2C3A4A', // Deal Type
+                'UF_CRM_67FF84E2B934F', // Developer Name (enum)
+                'UF_CRM_67FF84E2B45F2', // Total Commission AED
+                'UF_CRM_67FF84E2BE481', // Agent's Commission AED
             ],
             null,
             ['ID' => 'desc']
         );
 
         $data = [
-            // 'developer_stats' => $this->getDeveloperStats(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_1678454522560']), $year),
-            // 'deal_type_distribution' => $this->getDealTypeDistribution(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_1691416031901']), $year),
-            // 'developer_property_price_distribution' => $this->getDeveloperPropertyPriceDistribution(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_1678454522560']), $year),
+            // 'developer_stats' => $this->getDeveloperStats(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_67FF84E2B934F']), $year),
+            // 'deal_type_distribution' => $this->getDealTypeDistribution(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_67FF84E2C3A4A']), $year),
+            // 'developer_property_price_distribution' => $this->getDeveloperPropertyPriceDistribution(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_67FF84E2B934F']), $year),
             'developer_stats' => $this->getDeveloperStats($deals, $year),
             'deal_type_distribution' => $this->getDealTypeDistribution($deals, $year),
             'developer_property_price_distribution' => $this->getDeveloperPropertyPriceDistribution($deals, $year),
@@ -74,7 +74,7 @@ class DashboardController extends BitrixController
         foreach ($deals as $deal) {
             $createDate = new DateTime($deal['DATE_CREATE']);
             $month = (int)$createDate->format('n');
-            $developer = $deal['UF_CRM_1678454522560'] ?? 'Unknown';
+            $developer = $deal['UF_CRM_67FF84E2B934F'] ?? 'Unknown';
 
             if (!isset($stats[$month][$developer])) {
                 $stats[$month][$developer] = [
@@ -90,8 +90,8 @@ class DashboardController extends BitrixController
             if ($deal['CLOSED'] === 'Y') {
                 $stats[$month][$developer]['closed_deals']++;
                 $stats[$month][$developer]['property_price'] += (float)$deal['OPPORTUNITY'];
-                $stats[$month][$developer]['total_commission'] += (float)$deal['UF_CRM_1691928298822'];
-                $stats[$month][$developer]['agent_commission'] += (float)$deal['UF_CRM_1691928322686'];
+                $stats[$month][$developer]['total_commission'] += (float)$deal['UF_CRM_67FF84E2B45F2'];
+                $stats[$month][$developer]['agent_commission'] += (float)$deal['UF_CRM_67FF84E2BE481'];
             }
         }
 
@@ -115,7 +115,7 @@ class DashboardController extends BitrixController
         ];
 
         foreach ($deals as $deal) {
-            $type = (int) $deal['UF_CRM_1691416031901'] ?? null;
+            $type = (int) $deal['UF_CRM_67FF84E2C3A4A'] ?? null;
 
             switch ($type) {
                 case 4694:
@@ -142,7 +142,7 @@ class DashboardController extends BitrixController
         $overallPropertyPrice = 0;
 
         foreach ($deals as $deal) {
-            $developer = $deal['UF_CRM_1678454522560'] ?? 'Unknown';
+            $developer = $deal['UF_CRM_67FF84E2B934F'] ?? 'Unknown';
             $price = (float)$deal['OPPORTUNITY'];
 
             if (!isset($totals[$developer])) {

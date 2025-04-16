@@ -55,8 +55,8 @@ class LastTransactionsController extends BitrixController
             'ASSIGNED_BY_ID',
             'CLOSEDATE',
             'OPPORTUNITY',
-            'UF_CRM_1678609754757',
-            'UF_CRM_1691928311792',
+            'UF_CRM_67FF84E2C8AB6',
+            'UF_CRM_67FF84E2CD927',
         ]);
 
         $dealByEmployee = [];
@@ -89,9 +89,9 @@ class LastTransactionsController extends BitrixController
                 'agent' => $name,
                 'joiningDate' => $joiningDate,
                 'lastDealDate' => $lastDealDate,
-                'project' => $this->mapProjectName($lastDeal['UF_CRM_1678609754757']) ?? 'Unknown',
+                'project' => $this->mapProjectName($lastDeal['UF_CRM_67FF84E2C8AB6']) ?? 'Unknown',
                 'amount' => (float) $lastDeal['OPPORTUNITY'],
-                'grossComms' => (float) $lastDeal['OPPORTUNITY'] * (float) $lastDeal['UF_CRM_1691928311792'] / 100,
+                'grossComms' => (float) $lastDeal['OPPORTUNITY'] * (float) $lastDeal['UF_CRM_67FF84E2CD927'] / 100,
                 'monthsWithoutClosing' => $monthsWithoutClosing
             ];
         }

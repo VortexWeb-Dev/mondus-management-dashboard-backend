@@ -47,14 +47,14 @@ class AgentRankingsController extends BitrixController
         $currentYear = date('Y');
         $deals = $this->getDeals([
             '@ASSIGNED_BY_ID' => array_keys($employeesById),
-            '!UF_CRM_1591696067251' => null,
+            '!UF_CRM_67FF84E2B45F2' => null,
             'CLOSED' => 'Y',
             '>=DATE_CREATE' => $currentYear . '-01-01',
             '<=DATE_CREATE' => $currentYear . '-12-31',
         ], [
             'ID',
             'ASSIGNED_BY_ID',
-            'UF_CRM_1591696067251',
+            'UF_CRM_67FF84E2B45F2',
             'DATE_CREATE'
         ], null, ['DATE_CREATE' => 'DESC']);
 
@@ -85,7 +85,7 @@ class AgentRankingsController extends BitrixController
 
         foreach ($deals as $deal) {
             $agentId = $deal['ASSIGNED_BY_ID'];
-            $commission = (float)($deal['UF_CRM_1591696067251'] ?? 0);
+            $commission = (float)($deal['UF_CRM_67FF84E2B45F2'] ?? 0);
             $dealDate = new DateTime($deal['DATE_CREATE']);
             $month = $dealDate->format('m');
             $monthName = $monthNames[$month];
