@@ -59,6 +59,11 @@ class LastTransactionsController extends BitrixController
             'UF_CRM_67FF84E2CD927',
         ]);
 
+        if(empty($deals)) {
+            $this->response->sendSuccess(200, []);
+            return;
+        }
+
         $dealByEmployee = [];
         foreach ($deals as $deal) {
             $employeeId = $deal['ASSIGNED_BY_ID'];

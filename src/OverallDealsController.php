@@ -74,6 +74,11 @@ class OverallDealsController extends BitrixController
             '@ASSIGNED_BY_ID' => $salesEmployeesIds,
             '!=UF_CRM_67FF84E2C8AB6' => null
         ], $select, 10, ['ID' => 'desc']);
+
+        if (empty($deals)) {
+            $this->response->sendError(204, "No Deals Found");
+            return;
+        }
         
         // Create a lookup array for employees to easily find by ID
         $employeesById = [];

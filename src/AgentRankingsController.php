@@ -58,6 +58,11 @@ class AgentRankingsController extends BitrixController
             'DATE_CREATE'
         ], null, ['DATE_CREATE' => 'DESC']);
 
+        if (empty($deals)) {
+            $this->response->sendError(204, "No Deals Found");
+            return;
+        }
+
         $monthNames = [
             '01' => 'jan',
             '02' => 'feb',
