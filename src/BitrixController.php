@@ -46,6 +46,42 @@ class BitrixController
         return array_slice($allDeals, 0, $limit) ?: null;
     }
 
+    public function getCFTLeads(array $filter = [], array $select = [], int $limit = null, array $order = []): ?array
+    {
+        $allDeals = [];
+        $start = 0;
+
+        $select = empty($select) ? ['id', 'title'] : $select;
+        $order = empty($order) ? ['createdTime' => 'DESC'] : $order;
+
+        do {
+            $params = [
+                'entityTypeId' => $this->config['CFT_LEADS_ENTITY_TYPE_ID'],
+                'filter' => $filter,
+                'select' => $select,
+                'start'  => $start,
+                'order'  => $order,
+            ];
+
+            $response = CRest::call('crm.item.list', $params);
+
+            if (!isset($response['result'])) {
+                error_log('Bitrix CRM error: ' . json_encode($response));
+                break;
+            }
+
+            $allDeals = array_merge($allDeals, $response['result']['items'] ?? []);
+
+            if ($limit && count($allDeals) >= $limit) {
+                break;
+            }
+
+            $start = $response['next'] ?? null;
+        } while ($start !== null);
+
+        return array_slice($allDeals, 0, $limit) ?: null;
+    }
+
     public function getUser(int $id): ?array
     {
         $result = CRest::call('user.get', ['ID' => $id]);

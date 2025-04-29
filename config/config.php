@@ -23,5 +23,6 @@ return [
         "20",  // SHREE SHYAM
         "26",  // SUNNY DIAMOND 1
         "27"   // SUNNY DIAMOND 2
-    ]
+    ],
+    'CFT_LEADS_ENTITY_TYPE_ID' => 1036
 ];

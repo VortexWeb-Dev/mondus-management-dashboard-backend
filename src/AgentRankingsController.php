@@ -28,7 +28,9 @@ class AgentRankingsController extends BitrixController
             return;
         }
 
-        $cacheKey = "agent_rankings_" . date('Y-m-d');
+        $type = $_GET['type'] ?? 'mondus';
+
+        $cacheKey = "agent_rankings_" . date('Y-m-d') . $type;
         $cached = $this->cache->get($cacheKey);
 
         if ($cached !== false  && $this->config['cache']['enabled']) {
@@ -36,7 +38,7 @@ class AgentRankingsController extends BitrixController
             return;
         }
 
-        $salesDeptIds = $this->config['SALES_DEPARTMENT_IDS'];
+        $salesDeptIds = $type == 'mondus' ? $this->config['SALES_DEPARTMENT_IDS'] : $this->config['CFT_DEPARTMENT_IDS'];
         $salesEmployees = $this->getAllUsers(['UF_DEPARTMENT' => $salesDeptIds], ['ID', 'NAME', 'LAST_NAME', 'WORK_POSITION', 'UF_DEPARTMENT']);
 
         $employeesById = [];
@@ -45,7 +47,7 @@ class AgentRankingsController extends BitrixController
         }
 
         $currentYear = date('Y');
-        $deals = $this->getDeals([
+        $deals = $type == 'mondus' ? $this->getDeals([
             '@ASSIGNED_BY_ID' => array_keys($employeesById),
             '!UF_CRM_67FF84E2B45F2' => null,
             'CLOSED' => 'Y',
@@ -56,7 +58,19 @@ class AgentRankingsController extends BitrixController
             'ASSIGNED_BY_ID',
             'UF_CRM_67FF84E2B45F2',
             'DATE_CREATE'
-        ], null, ['DATE_CREATE' => 'DESC']);
+        ], null, ['DATE_CREATE' => 'DESC'])
+            : $this->getCFTLeads([
+                '@assignedById' => array_keys($employeesById),
+                '!ufCrm3_1744794099' => null,
+                '!opened' => 'Y',
+                '>=createdTime' => $currentYear . '-01-01',
+                '<=createdTime' => $currentYear . '-12-31',
+            ], [
+                'ID',
+                'assignedById',
+                'ufCrm3_1744794099',
+                'createdTime'
+            ], null, ['createdTime' => 'DESC']);
 
         if (empty($deals)) {
             $this->response->sendError(204, "No Deals Found");
@@ -89,9 +103,9 @@ class AgentRankingsController extends BitrixController
         }
 
         foreach ($deals as $deal) {
-            $agentId = $deal['ASSIGNED_BY_ID'];
-            $commission = (float)($deal['UF_CRM_67FF84E2B45F2'] ?? 0);
-            $dealDate = new DateTime($deal['DATE_CREATE']);
+            $agentId = $type == 'mondus' ? $deal['ASSIGNED_BY_ID'] : $deal['assignedById'];
+            $commission = $type == 'mondus' ? (float)($deal['UF_CRM_67FF84E2B45F2'] ?? 0) : (float)($deal['ufCrm3_1744794099'] ?? 0);
+            $dealDate = $type == 'mondus' ? new DateTime($deal['DATE_CREATE']) : new DateTime($deal['createdTime']);
             $month = $dealDate->format('m');
             $monthName = $monthNames[$month];
 
