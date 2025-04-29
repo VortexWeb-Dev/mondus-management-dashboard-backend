@@ -28,7 +28,9 @@ class OverallDealsController extends BitrixController
             return;
         }
 
-        $cacheKey = "overall_deals_" . date('Y-m-d');
+        $type = $_GET['type'] ?? 'mondus';
+
+        $cacheKey = "overall_deals_" . date('Y-m-d') . $type;
         $cached = $this->cache->get($cacheKey);
 
         if ($cached !== false && $this->config['cache']['enabled']) {
@@ -39,7 +41,6 @@ class OverallDealsController extends BitrixController
         $select = [
             "ID",
             "TITLE",
-            "STAGE_ID",
             "DATE_CREATE",
             "OPPORTUNITY",
             "ASSIGNED_BY_ID",
@@ -48,18 +49,36 @@ class OverallDealsController extends BitrixController
             "UF_CRM_67FF84E2D7CCA",
             "UF_CRM_67FF84E2DCC09",
             "UF_CRM_67FF84E2B934F",
-            "UF_CRM_67FF84E2E1D1A",
+            "UF_CRM_67FF84E2E1D1A", //
             "UF_CRM_67FF84E2C8AB6",
             "UF_CRM_67FF84E2C3A4A",
-            "UF_TEAM",
             "SOURCE_ID",
             "UF_CRM_67FF84E2BE481",
-            "UF_CRM_67FF84E2B45F2",
             "UF_CRM_67FF84E2B45F2",
             "UF_CRM_67FF84E2ECBF3",
         ];
 
-        $salesDeptIds = $this->config['SALES_DEPARTMENT_IDS'];
+        $cftSelect = [
+            'id',
+            'title',
+            'createdTime',
+            'opportunity',
+            'assignedById',
+            'ufCrm3_1744794263',
+            'ufCrm3_1744802223',
+            'ufCrm3_1744794276',
+            'ufCrm3_1744794296',
+            'ufCrm3_1744794138',
+            'ufCrm3_1744794307',
+            'ufCrm3_1744794218',
+            'ufCrm3_1744794200',
+            'sourceId',
+            'ufCrm3_1744794153',
+            'ufCrm3_1744794099',
+            'ufCrm3_1744794360'
+        ];
+
+        $salesDeptIds = $type == 'mondus' ? $this->config['SALES_DEPARTMENT_IDS'] : $this->config['CFT_DEPARTMENT_IDS'];
         $salesEmployees = $this->getAllUsers(['UF_DEPARTMENT' => $salesDeptIds], [
             'ID',
             'NAME',
@@ -70,16 +89,19 @@ class OverallDealsController extends BitrixController
         ]);
         $salesEmployeesIds = array_column($salesEmployees, 'ID');
 
-        $deals = $this->getDeals([
+        $deals = $type == 'mondus' ? $this->getDeals([
             '@ASSIGNED_BY_ID' => $salesEmployeesIds,
             '!=UF_CRM_67FF84E2C8AB6' => null
-        ], $select, 10, ['ID' => 'desc']);
+        ], $select, 10, ['ID' => 'desc']) : $this->getCFTLeads([
+            '@assignedById' => $salesEmployeesIds,
+            '!=ufCrm3_1744794218' => null
+        ], $select, 10, ['id' => 'desc']);
 
         if (empty($deals)) {
-            $this->response->sendError(204, "No Deals Found");
+            $this->response->sendSuccess(200, []);
             return;
         }
-        
+
         // Create a lookup array for employees to easily find by ID
         $employeesById = [];
         foreach ($salesEmployees as $employee) {
@@ -89,32 +111,50 @@ class OverallDealsController extends BitrixController
         $formatted = [];
         foreach ($deals as $deal) {
             // Get agent name from lookup array
-            $agentName = $employeesById[$deal['ASSIGNED_BY_ID']] ?? '';
+            $agentName = $type == 'mondus' ? ($employeesById[$deal['ASSIGNED_BY_ID']] ?? '') : ($employeesById[$deal['assignedById']] ?? '');
 
             // Handle property type which appears to be an array
             $propertyType = '';
-            if (!empty($deal['UF_CRM_67FF84E2DCC09']) && is_array($deal['UF_CRM_67FF84E2DCC09'])) {
-                $propertyType = $deal['UF_CRM_67FF84E2DCC09'][0];
-            } elseif (!empty($deal['UF_CRM_67FF84E2DCC09']) && !is_array($deal['UF_CRM_67FF84E2DCC09'])) {
-                $propertyType = $deal['UF_CRM_67FF84E2DCC09'];
+
+            if ($type == 'mondus') {
+                if (!empty($deal['UF_CRM_67FF84E2DCC09']) && is_array($deal['UF_CRM_67FF84E2DCC09'])) {
+                    $propertyType = $deal['UF_CRM_67FF84E2DCC09'][0];
+                } elseif (!empty($deal['UF_CRM_67FF84E2DCC09']) && !is_array($deal['UF_CRM_67FF84E2DCC09'])) {
+                    $propertyType = $deal['UF_CRM_67FF84E2DCC09'];
+                }
+            } else {
+                $propertyType = $deal['ufCrm3_1744794296'];
             }
 
             $formatted[] = [
-                'date' => date('Y-m-d', strtotime($deal['DATE_CREATE'])),
-                'dealType' => $deal['UF_CRM_67FF84E2C3A4A'] ?? '',
-                'projectName' => $deal['UF_CRM_67FF84E2C8AB6'] ?? '',
-                'unitNo' => $deal['UF_CRM_67FF941757D73'] ?? '',
-                'developerName' => $deal['UF_CRM_67FF84E2B934F'] ?? '',
+                'date' => $type == 'mondus' ? date('Y-m-d', strtotime($deal['DATE_CREATE'])) : date('Y-m-d', strtotime($deal['createdTime'])),
+                'dealType' => $type == 'mondus' ? $deal['UF_CRM_67FF84E2C3A4A'] ?? '' : $deal['ufCrm3_1744794200'] ?? '',
+                'projectName' => $type == 'mondus' ? $deal['UF_CRM_67FF84E2C8AB6'] ?? '' : $deal['ufCrm3_1744794218'] ?? '',
+                'unitNo' => $type == 'mondus' ? $deal['UF_CRM_67FF941757D73'] ?? '' : $deal['ufCrm3_1744802223'] ?? '',
+                'developerName' => $type == 'mondus' ? $deal['UF_CRM_67FF84E2B934F'] ?? '' : $deal['ufCrm3_1744794138'] ?? '',
                 'propertyType' => $propertyType,
-                'noOfBr' => (int)($deal['UF_CRM_67FF84E2E1D1A'] ?? 0),
-                'clientName' => $deal['UF_CRM_67FF84E299077'] ?? '',
+                'noOfBr' => $type == 'mondus' ? (int)($deal['UF_CRM_67FF84E2E1D1A'] ?? 0) : (int)($deal['ufCrm3_1744794307'] ?? 0),
+                'clientName' => $type == 'mondus' ? $deal['UF_CRM_67FF84E299077'] ?? '' : $deal['ufCrm3_1744794263'] ?? '',
                 'agentName' => $agentName,
-                'propertyPrice' => (float)($deal['UF_CRM_67FF84E2D7CCA'] ?? 0),
-                'grossCommissionInclVAT' => (float)($deal['UF_CRM_67FF84E2B45F2'] ?? 0),
-                'grossCommission' => (float)($deal['UF_CRM_67FF84E2B45F2'] ?? 0),
-                'vat' => (float)($deal['UF_CRM_67FF84E2ECBF3'] ?? 0),
-                'agentCommission' => (float)($deal['UF_CRM_67FF84E2BE481'] ?? 0),
-                'leadSource' => $this->mapSourceId($deal['SOURCE_ID']) ?? '',
+                'propertyPrice' => $type == 'mondus' ? (float)($deal['UF_CRM_67FF84E2D7CCA'] ?? 0) : (float)($deal['ufCrm3_1744794276'] ?? 0),
+                'grossCommission' => $type == 'mondus'
+                    ? (float)($deal['UF_CRM_67FF84E2B45F2'] ?? 0)
+                    : (float)($deal['ufCrm3_1744794099'] ?? 0),
+
+                'vat' => $type == 'mondus'
+                    ? (float)($deal['UF_CRM_67FF84E2ECBF3'] ?? 0)
+                    : (float)($deal['ufCrm3_1744794360'] ?? 0),
+
+                'grossCommissionInclVAT' => ($type == 'mondus'
+                    ? (float)($deal['UF_CRM_67FF84E2B45F2'] ?? 0)
+                    : (float)($deal['ufCrm3_1744794099'] ?? 0)
+                ) +
+                    ($type == 'mondus'
+                        ? (float)($deal['UF_CRM_67FF84E2ECBF3'] ?? 0)
+                        : (float)($deal['ufCrm3_1744794360'] ?? 0)
+                    ),
+                'agentCommission' => $type == 'mondus' ? (float)($deal['UF_CRM_67FF84E2BE481'] ?? 0) : (float)($deal['ufCrm3_1744794153'] ?? 0),
+                'leadSource' => $this->mapSourceId($deal['SOURCE_ID']) ?? $this->mapSourceId($deal['sourceId']) ?? '',
             ];
         }
 
