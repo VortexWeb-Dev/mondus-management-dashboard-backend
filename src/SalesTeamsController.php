@@ -28,7 +28,9 @@ class SalesTeamsController extends BitrixController
             return;
         }
 
-        $cacheKey = "sales_teams_" . date('Y-m-d');
+        $type = $_GET['type'] ?? 'mondus';
+
+        $cacheKey = "sales_teams_" . date('Y-m-d') . $type;
         $cached = $this->cache->get($cacheKey);
 
         if ($cached !== false && $this->config['cache']['enabled']) {
@@ -36,8 +38,8 @@ class SalesTeamsController extends BitrixController
             return;
         }
 
-        $salesDeptIds = $this->config['SALES_DEPARTMENT_IDS'];
-        $salesDepartments = $this->getAllDepartments($salesDeptIds, ['ID', 'NAME', 'UF_HEAD']);
+        $salesDeptIds = $type == 'mondus' ? $this->config['SALES_DEPARTMENT_IDS'] : $this->config['CFT_DEPARTMENT_IDS'];
+        $salesDepartments = $type == 'mondus' ? $this->getAllDepartments($salesDeptIds, ['ID', 'NAME', 'UF_HEAD']) : $this->getAllDepartments($salesDeptIds, ['ID', 'NAME', 'UF_HEAD'], $this->config['LISTINGS_ENTITY_TYPE_ID']);
         $salesEmployees = $this->getAllUsers(['UF_DEPARTMENT' => $salesDeptIds], ['ID', 'NAME', 'LAST_NAME', 'WORK_POSITION', 'UF_DEPARTMENT']);
 
         $data = [];
