@@ -73,7 +73,7 @@ class AgentRankingsController extends BitrixController
             ], null, ['createdTime' => 'DESC']);
 
         if (empty($deals)) {
-            $this->response->sendError(204, "No Deals Found");
+            $this->response->sendSuccess(200, []);
             return;
         }
 

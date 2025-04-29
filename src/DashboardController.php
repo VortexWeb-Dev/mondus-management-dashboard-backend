@@ -27,10 +27,11 @@ class DashboardController extends BitrixController
             $this->response->sendError(405, "Method Not Allowed");
             return;
         }
+        $type = $_GET['type'] ?? 'mondus';
 
         $year = $_GET['year'] ?? date('Y');
 
-        $cacheKey = "dashboard_" . date('Y-m-d');
+        $cacheKey = "dashboard_" . date('Y-m-d') . $type . $year;
         $cached = $this->cache->get($cacheKey);
 
         if ($cached !== false && $this->config['cache']['enabled']) {
@@ -38,7 +39,7 @@ class DashboardController extends BitrixController
             return;
         }
 
-        $deals = $this->getDeals(
+        $deals = $type == 'mondus' ? $this->getDeals(
             ['>=DATE_CREATE' => $year . '-01-01', '<=DATE_CREATE' => $year . '-12-31', '!OPPORTUNITY' => null],
             [
                 'ID',
@@ -52,29 +53,44 @@ class DashboardController extends BitrixController
             ],
             null,
             ['ID' => 'desc']
+        ) : $this->getCFTLeads(
+            ['>=createdTime' => $year . '-01-01', '<=createdTime' => $year . '-12-31', '!opportunity' => null],
+            [
+                'ID',
+                'opened',
+                'opportunity', // Property Price
+                'createdTime',
+                'ufCrm3_1744794200', // Deal Type
+                'ufCrm3_1744794138', // Developer Name (enum)
+                'ufCrm3_1744794099', // Total Commission AED
+                'ufCrm3_1744794153', // Agent's Commission AED
+            ],
+            null,
+            ['id' => 'desc']
         );
 
         $data = [
             // 'developer_stats' => $this->getDeveloperStats(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_67FF84E2B934F']), $year),
             // 'deal_type_distribution' => $this->getDealTypeDistribution(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_67FF84E2C3A4A']), $year),
             // 'developer_property_price_distribution' => $this->getDeveloperPropertyPriceDistribution(array_filter($deals ?? [], fn($deal) => $deal['UF_CRM_67FF84E2B934F']), $year),
-            'developer_stats' => $this->getDeveloperStats($deals, $year),
-            'deal_type_distribution' => $this->getDealTypeDistribution($deals, $year),
-            'developer_property_price_distribution' => $this->getDeveloperPropertyPriceDistribution($deals, $year),
+            'developer_stats' => $this->getDeveloperStats($deals, $year, $type),
+            'deal_type_distribution' => $this->getDealTypeDistribution($deals, $year, $type),
+            'developer_property_price_distribution' => $this->getDeveloperPropertyPriceDistribution($deals, $year, $type),
         ];
 
         $this->cache->set($cacheKey, $data);
         $this->response->sendSuccess(200, $data);
     }
 
-    private function getDeveloperStats(array $deals, int $year): array
+    private function getDeveloperStats(array $deals, int $year, string $type): array
     {
+
         $stats = [];
 
         foreach ($deals as $deal) {
-            $createDate = new DateTime($deal['DATE_CREATE']);
+            $createDate = $type == 'mondus' ? new DateTime($deal['DATE_CREATE']) : new DateTime($deal['createdTime']);
             $month = (int)$createDate->format('n');
-            $developer = $deal['UF_CRM_67FF84E2B934F'] ?? 'Unknown';
+            $developer = $type == 'mondus' ? ($deal['UF_CRM_67FF84E2B934F'] ?? 'Unknown') : ($deal['ufCrm3_1744794138'] ?? 'Unknown');
 
             if (!isset($stats[$month][$developer])) {
                 $stats[$month][$developer] = [
@@ -89,9 +105,9 @@ class DashboardController extends BitrixController
 
             if ($deal['CLOSED'] === 'Y') {
                 $stats[$month][$developer]['closed_deals']++;
-                $stats[$month][$developer]['property_price'] += (float)$deal['OPPORTUNITY'];
-                $stats[$month][$developer]['total_commission'] += (float)$deal['UF_CRM_67FF84E2B45F2'];
-                $stats[$month][$developer]['agent_commission'] += (float)$deal['UF_CRM_67FF84E2BE481'];
+                $stats[$month][$developer]['property_price'] += $type == 'mondus' ? (float)$deal['OPPORTUNITY'] : (float)$deal['opportunity'];
+                $stats[$month][$developer]['total_commission'] += $type == 'mondus' ? (float)$deal['UF_CRM_67FF84E2B45F2'] : (float)$deal['ufCrm3_1744794099'];
+                $stats[$month][$developer]['agent_commission'] += $type == 'mondus' ? (float)$deal['UF_CRM_67FF84E2BE481'] : (float)$deal['ufCrm3_1744794153'];
             }
         }
 
@@ -105,7 +121,7 @@ class DashboardController extends BitrixController
         return $result;
     }
 
-    private function getDealTypeDistribution(array $deals, int $year): array
+    private function getDealTypeDistribution(array $deals, int $year, string $type): array
     {
         $distribution = [
             'Off-Plan' => 0,
@@ -115,35 +131,52 @@ class DashboardController extends BitrixController
         ];
 
         foreach ($deals as $deal) {
-            $type = (int) $deal['UF_CRM_67FF84E2C3A4A'] ?? null;
-
-            switch ($type) {
-                case 4694:
-                    $distribution['Off-Plan']++;
-                    break;
-                case 4695:
-                    $distribution['Secondary']++;
-                    break;
-                case 4696:
-                    $distribution['Rental']++;
-                    break;
-                default:
-                    $distribution['Unknown']++;
-                    break;
+            if ($type === 'mondus') {
+                $dealType = (int) ($deal['UF_CRM_67FF84E2C3A4A'] ?? 0);
+                switch ($dealType) {
+                    case 4694:
+                        $distribution['Off-Plan']++;
+                        break;
+                    case 4695:
+                        $distribution['Secondary']++;
+                        break;
+                    case 4696:
+                        $distribution['Rental']++;
+                        break;
+                    default:
+                        $distribution['Unknown']++;
+                        break;
+                }
+            } else {
+                $dealTypeStr = strtolower(trim($deal['ufCrm3_1744794200'] ?? ''));
+                switch ($dealTypeStr) {
+                    case 'off-plan':
+                        $distribution['Off-Plan']++;
+                        break;
+                    case 'secondary':
+                        $distribution['Secondary']++;
+                        break;
+                    case 'rental':
+                        $distribution['Rental']++;
+                        break;
+                    default:
+                        $distribution['Unknown']++;
+                        break;
+                }
             }
         }
 
         return $distribution;
     }
 
-    private function getDeveloperPropertyPriceDistribution(array $deals, int $year): array
+    private function getDeveloperPropertyPriceDistribution(array $deals, int $year, string $type): array
     {
         $totals = [];
         $overallPropertyPrice = 0;
 
         foreach ($deals as $deal) {
-            $developer = $deal['UF_CRM_67FF84E2B934F'] ?? 'Unknown';
-            $price = (float)$deal['OPPORTUNITY'];
+            $developer = $type == 'mondus' ? ($deal['UF_CRM_67FF84E2B934F'] ?? 'Unknown') : ($deal['ufCrm3_1744794138'] ?? 'Unknown');
+            $price = $type == 'mondus' ? (float)$deal['OPPORTUNITY'] : (float)$deal['opportunity'];
 
             if (!isset($totals[$developer])) {
                 $totals[$developer] = 0;
